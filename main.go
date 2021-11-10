@@ -79,6 +79,8 @@ var config Config
 
 func main() {
 
+    readConfig(&config)
+    
     file, err := os.OpenFile(config.LogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
     if err != nil {
         log.Fatal(err)
@@ -89,7 +91,7 @@ func main() {
     log.SetOutput(file)
     log.Print("Starting application!")
 
-    readConfig(&config)
+    
     http.HandleFunc("/api", api)
     http.HandleFunc("/heartbeat", heartbeat)
     log.Fatal(http.ListenAndServe(":"+config.Port, nil))
