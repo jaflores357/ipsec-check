@@ -14,6 +14,7 @@ type Config struct {
     Slave       string `yaml:"slave"`
     Port        string `yaml:"port"`
     StatusFile  string `yaml:"statusFile"`
+    LogFile     string `yaml:"logFile"`
 }
 
 func api(w http.ResponseWriter, req *http.Request) {
@@ -28,6 +29,20 @@ func api(w http.ResponseWriter, req *http.Request) {
     log.Printf("Local statusCode %d, Remote statusCode %d", status, slaveStatus)
     w.WriteHeader(status)    
 }
+
+func heartbeat(w http.ResponseWriter, req *http.Request) {
+    status := http.StatusServiceUnavailable
+    dat, err := ioutil.ReadFile(config.StatusFile)
+    if err == nil {
+        if strings.Contains(string(dat), "UP") {
+            status = http.StatusOK
+        }
+    }
+    log.Printf("Heartbeat statusCode %d", status)
+    w.WriteHeader(status)    
+}
+
+
 
 func checkSlave (req string) int {
     client := &http.Client{}
@@ -47,7 +62,7 @@ func processError(err error) {
 }
 
 func readConfig(cfg *Config) {
-    f, err := os.Open("config.yaml")
+    f, err := os.Open("/etc/ipsec-check.yaml")
     if err != nil {
         processError(err)
     }
@@ -64,7 +79,7 @@ var config Config
 
 func main() {
 
-    file, err := os.OpenFile("info.log", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+    file, err := os.OpenFile(config.LogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
     if err != nil {
         log.Fatal(err)
     }
@@ -76,6 +91,7 @@ func main() {
 
     readConfig(&config)
     http.HandleFunc("/api", api)
+    http.HandleFunc("/heartbeat", heartbeat)
     log.Fatal(http.ListenAndServe(":"+config.Port, nil))
 }
 

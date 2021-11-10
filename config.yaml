@@ -1,3 +1,4 @@
 slave: https://google.com
 port: 5000
 statusFile: /tmp/dat
+logFile: /tmp/ipsec-check.log
