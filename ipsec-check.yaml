@@ -1,4 +1,5 @@
 slave: https://google.com
 port: 41234
 statusFile: /tmp/dat
-logFile: /tmp/ipsec-check.log
+logPrefix: /tmp/ipsec-check
+logRotationTime: 300

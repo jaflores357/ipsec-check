@@ -7,14 +7,17 @@ import (
     "net/http"
     "os"
     "log"
+    "time"
     "gopkg.in/yaml.v2"
+    "github.com/lestrrat-go/file-rotatelogs"
 )
 
 type Config struct {
-    Slave       string `yaml:"slave"`
-    Port        string `yaml:"port"`
-    StatusFile  string `yaml:"statusFile"`
-    LogFile     string `yaml:"logFile"`
+    Slave           string `yaml:"slave"`
+    Port            string `yaml:"port"`
+    StatusFile      string `yaml:"statusFile"`
+    LogPrefix       string `yaml:"logPrefix"`
+    logRotationTime int    `yaml:"logRotationTime"`
 }
 
 func api(w http.ResponseWriter, req *http.Request) {
@@ -41,8 +44,6 @@ func heartbeat(w http.ResponseWriter, req *http.Request) {
     log.Printf("Heartbeat statusCode %d", status)
     w.WriteHeader(status)    
 }
-
-
 
 func checkSlave (req string) int {
     client := &http.Client{}
@@ -75,22 +76,29 @@ func readConfig(cfg *Config) {
     }
 } 
 
+func initiLogger() {
+    path := config.LogPrefix
+    writer, err := rotatelogs.New(
+        fmt.Sprintf("%s.%s", path, "%Y%m%d%H%M"),
+        rotatelogs.WithLinkName(config.LogPrefix + ".log"),
+        rotatelogs.WithRotationCount(2),
+        rotatelogs.WithRotationTime(time.Second*time.Duration(config.logRotationTime)),
+    )
+    if err != nil {
+        log.Fatalf("Failed to Initialize Log File %s", err)
+    }
+    log.SetOutput(writer)
+    return
+}
+
 var config Config
 
 func main() {
 
     readConfig(&config)
-    
-    file, err := os.OpenFile(config.LogFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-    if err != nil {
-        log.Fatal(err)
-    }
+    initiLogger()
 
-    defer file.Close()
-
-    log.SetOutput(file)
     log.Print("Starting application!")
-
     
     http.HandleFunc("/api", api)
     http.HandleFunc("/heartbeat", heartbeat)
